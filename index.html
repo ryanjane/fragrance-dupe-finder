@@ -83,35 +83,49 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect } = React;
 
-    const MOCK_FRAGRANCES = [
-      { id: '1', name: 'Dior Sauvage', house: 'Christian Dior', price: 130, notes: 'ambroxan, pepper, ambrette seed', source: 'https://www.dior.com', type: 'original' },
-      { id: '2', name: 'Aromatic Elixir', house: 'Clinique', price: 85, notes: 'ambroxan, pepper, citrus', source: 'https://www.clinique.com', type: 'clone', compareTo: '1', accuracy: 4.2 },
-      { id: '3', name: 'Bleu de Chanel', house: 'Chanel', price: 155, notes: 'lemon, mint, cedarwood', source: 'https://www.chanel.com', type: 'original' },
-      { id: '4', name: 'Bleu de Chanel Clone', house: 'Lonkoom', price: 35, notes: 'lemon, mint, woodsy', source: 'https://www.lonkoom.com', type: 'clone', compareTo: '3', accuracy: 3.8 },
-      { id: '5', name: 'Aventus', house: 'Creed', price: 380, notes: 'pineapple, birch, ambroxan', source: 'https://www.creed.com', type: 'original' },
-      { id: '6', name: 'Creed Aventus Alternative', house: 'Fragrance One', price: 45, notes: 'pineapple, birch, musk', source: 'https://www.fragranceone.com', type: 'inspired', compareTo: '5', accuracy: 3.5 },
-      { id: '7', name: 'Sauvage Elixir', house: 'Perfume Studio', price: 28, notes: 'ambroxan, pepper, synthetic ambrette', source: 'https://www.perfumestudio.com', type: 'inspired', compareTo: '1', accuracy: 3.2 }
-    ];
-
-    const MOCK_REVIEWS = {
-      '2': { accuracy: 4.2, priceValue: 4.8, reviews: 124 },
-      '4': { accuracy: 3.8, priceValue: 4.9, reviews: 87 },
-      '6': { accuracy: 3.5, priceValue: 4.7, reviews: 56 },
-      '7': { accuracy: 3.2, priceValue: 4.5, reviews: 42 }
-    };
+    // Initialize Supabase
+    const SUPABASE_URL = 'https://zbsgcqrlqtcauyuisidg.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_8K0tGl4oNm_XDtTBAcKaOQ_ieVWiMCn';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     function FragranceDupeApp() {
       const [user, setUser] = useState(null);
       const [view, setView] = useState('search');
       const [searchTerm, setSearchTerm] = useState('');
-      const [fragrances] = useState(MOCK_FRAGRANCES);
+      const [fragrances, setFragrances] = useState([]);
       const [collections, setCollections] = useState({});
       const [selectedFrag, setSelectedFrag] = useState(null);
       const [isAdmin, setIsAdmin] = useState(false);
+      const [loading, setLoading] = useState(false);
+
+      // Fetch fragrances from Supabase
+      useEffect(() => {
+        if (user) {
+          fetchFragrances();
+        }
+      }, [user]);
+
+      const fetchFragrances = async () => {
+        setLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from('fragrances')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (error) throw error;
+          setFragrances(data || []);
+        } catch (err) {
+          console.error('Error fetching fragrances:', err);
+          alert('Error loading fragrances. Please refresh the page.');
+        }
+        setLoading(false);
+      };
 
       const searchResults = fragrances.filter(frag =>
         frag.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -131,6 +145,22 @@
 
       const toggleCollection = (fragId) => {
         setCollections(prev => ({ ...prev, [fragId]: !prev[fragId] }));
+      };
+
+      const addFragrance = async (fragData) => {
+        try {
+          const { data, error } = await supabase
+            .from('fragrances')
+            .insert([fragData])
+            .select();
+          
+          if (error) throw error;
+          setFragrances([...fragrances, ...data]);
+          alert('Fragrance added successfully!');
+        } catch (err) {
+          console.error('Error adding fragrance:', err);
+          alert('Error adding fragrance: ' + err.message);
+        }
       };
 
       if (!user) {
@@ -161,10 +191,10 @@
           </nav>
 
           <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem 1rem' }}>
-            {view === 'search' && <SearchView fragrances={searchResults} allFragrances={fragrances} searchTerm={searchTerm} setSearchTerm={setSearchTerm} onSelect={setSelectedFrag} selectedFrag={selectedFrag} onToggleCollection={toggleCollection} isInCollection={collections} />}
+            {view === 'search' && <SearchView fragrances={searchResults} allFragrances={fragrances} searchTerm={searchTerm} setSearchTerm={setSearchTerm} onSelect={setSelectedFrag} selectedFrag={selectedFrag} onToggleCollection={toggleCollection} isInCollection={collections} loading={loading} />}
             {view === 'collections' && <CollectionsView fragrances={fragrances} inCollection={collections} onToggleCollection={toggleCollection} />}
             {view === 'sources' && <SourcesView />}
-            {view === 'admin' && isAdmin && <AdminView fragrances={fragrances} />}
+            {view === 'admin' && isAdmin && <AdminView fragrances={fragrances} onAddFragrance={addFragrance} />}
           </main>
         </div>
       );
@@ -185,7 +215,7 @@
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>Email</label>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius)', border: '0.5px solid var(--border)', boxSizing: 'border-box', fontSize: '14px' }} required />
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '8px 0 0' }}>Tip: Use "admin@example.com" to see admin features</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '8px 0 0' }}>Tip: Use "admin@example.com" to add fragrances</p>
               </div>
               <button type="submit" style={{ padding: '10px 16px', background: 'var(--fill-accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
                 Sign in
@@ -196,7 +226,7 @@
       );
     }
 
-    function SearchView({ fragrances, allFragrances, searchTerm, setSearchTerm, onSelect, selectedFrag, onToggleCollection, isInCollection }) {
+    function SearchView({ fragrances, allFragrances, searchTerm, setSearchTerm, onSelect, selectedFrag, onToggleCollection, isInCollection, loading }) {
       return (
         <div>
           <div style={{ marginBottom: '2rem' }}>
@@ -206,8 +236,10 @@
             <FragranceDetail frag={selectedFrag} onBack={() => onSelect(null)} onToggleCollection={onToggleCollection} isInCollection={isInCollection[selectedFrag.id]} allFragrances={allFragrances} onSelectFrag={onSelect} />
           ) : (
             <div style={{ display: 'grid', gap: '12px' }}>
-              {fragrances.length === 0 ? (
-                <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>No fragrances found. Try a different search.</p>
+              {loading ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>Loading fragrances...</p>
+              ) : fragrances.length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>No fragrances found. Try a different search or sign in as admin to add one!</p>
               ) : (
                 fragrances.map(frag => (
                   <FragranceCard key={frag.id} frag={frag} onSelect={() => onSelect(frag)} onToggleCollection={() => onToggleCollection(frag.id)} isInCollection={isInCollection[frag.id]} />
@@ -220,7 +252,6 @@
     }
 
     function FragranceCard({ frag, onSelect, onToggleCollection, isInCollection }) {
-      const review = MOCK_REVIEWS[frag.id];
       const dupeType = frag.type === 'clone' ? 'Clone' : frag.type === 'inspired' ? 'Inspired' : 'Original';
       return (
         <div style={{ background: 'var(--surface-2)', border: '0.5px solid var(--border)', borderRadius: '12px', padding: '1rem', cursor: 'pointer' }} onClick={onSelect} onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--border-strong)'} onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}>
@@ -237,16 +268,15 @@
             </div>
           </div>
           <p style={{ margin: '8px 0', fontSize: '13px', color: 'var(--text-secondary)' }}>💰 ${frag.price}</p>
-          {review && <p style={{ margin: '8px 0 0', fontSize: '13px' }}>⭐ {review.accuracy}/5 accuracy · {review.reviews} reviews</p>}
+          {frag.accuracy && <p style={{ margin: '8px 0 0', fontSize: '13px' }}>⭐ {frag.accuracy}/5 accuracy</p>}
         </div>
       );
     }
 
     function FragranceDetail({ frag, onBack, onToggleCollection, isInCollection, allFragrances, onSelectFrag }) {
       const [showComparison, setShowComparison] = useState(false);
-      const review = MOCK_REVIEWS[frag.id];
-      const original = frag.compareTo ? allFragrances.find(f => f.id === frag.compareTo) : null;
-      const dupes = allFragrances.filter(f => f.compareTo === frag.id && f.id !== frag.id);
+      const original = frag.compared_to_id ? allFragrances.find(f => f.id === frag.compared_to_id) : null;
+      const dupes = allFragrances.filter(f => f.compared_to_id === frag.id && f.id !== frag.id);
 
       return (
         <div style={{ maxWidth: '700px' }}>
@@ -280,23 +310,25 @@
                 <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>Price</p>
                 <p style={{ margin: '4px 0 0', fontSize: '18px', fontWeight: 500 }}>${frag.price}</p>
               </div>
-              {review && (
+              {frag.accuracy && (
                 <div style={{ background: 'var(--surface-1)', padding: '1rem', borderRadius: 'var(--radius)' }}>
                   <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>Accuracy</p>
-                  <p style={{ margin: '4px 0 0', fontSize: '18px', fontWeight: 500 }}>⭐ {review.accuracy}/5</p>
+                  <p style={{ margin: '4px 0 0', fontSize: '18px', fontWeight: 500 }}>⭐ {frag.accuracy}/5</p>
                 </div>
               )}
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
               <h3 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 500 }}>Notes</h3>
-              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>{frag.notes}</p>
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>{frag.notes || 'No notes available'}</p>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-              <a href={frag.source} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 16px', background: 'var(--fill-accent)', color: 'var(--on-accent)', textDecoration: 'none', borderRadius: 'var(--radius)', fontSize: '14px', cursor: 'pointer' }}>
-                View on brand site ↗
-              </a>
+              {frag.source && (
+                <a href={frag.source} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 16px', background: 'var(--fill-accent)', color: 'var(--on-accent)', textDecoration: 'none', borderRadius: 'var(--radius)', fontSize: '14px', cursor: 'pointer' }}>
+                  View on brand site ↗
+                </a>
+              )}
               <button onClick={onToggleCollection} style={{ padding: '8px 16px', background: isInCollection ? 'var(--bg-success)' : 'var(--surface-1)', color: isInCollection ? 'var(--text-success)' : 'var(--text-primary)', border: '0.5px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: '14px' }}>
                 {isInCollection ? '✓ In your collection' : '+ Add to collection'}
               </button>
@@ -312,7 +344,7 @@
               )}
             </div>
 
-            {showComparison && original && <ComparisonView original={original} dupe={frag} review={review} />}
+            {showComparison && original && <ComparisonView original={original} dupe={frag} />}
 
             {dupes.length > 0 && (
               <div style={{ marginTop: '2rem', borderTop: '0.5px solid var(--border)', paddingTop: '1.5rem' }}>
@@ -320,26 +352,23 @@
                   Dupes, Clones & Inspired Alternatives ({dupes.length})
                 </h3>
                 <div style={{ display: 'grid', gap: '12px' }}>
-                  {dupes.map(dupe => {
-                    const dupeReview = MOCK_REVIEWS[dupe.id];
-                    return (
-                      <div key={dupe.id} style={{ background: 'var(--surface-1)', border: '0.5px solid var(--border)', borderRadius: 'var(--radius)', padding: '1rem', cursor: 'pointer' }} onClick={() => onSelectFrag(dupe)} onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--border-strong)'} onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
-                          <div style={{ flex: 1 }}>
-                            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 500 }}>{dupe.name}</h4>
-                            <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>{dupe.house}</p>
-                          </div>
-                          <span style={{ background: dupe.type === 'clone' ? 'var(--bg-accent)' : 'var(--bg-success)', color: dupe.type === 'clone' ? 'var(--text-accent)' : 'var(--text-success)', padding: '4px 8px', borderRadius: 'var(--radius)', fontSize: '11px', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                            {dupe.type === 'clone' ? 'Clone' : 'Inspired'}
-                          </span>
+                  {dupes.map(dupe => (
+                    <div key={dupe.id} style={{ background: 'var(--surface-1)', border: '0.5px solid var(--border)', borderRadius: 'var(--radius)', padding: '1rem', cursor: 'pointer' }} onClick={() => onSelectFrag(dupe)} onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--border-strong)'} onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 500 }}>{dupe.name}</h4>
+                          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>{dupe.house}</p>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                          <span>💰 ${dupe.price}</span>
-                          {dupeReview && <span>⭐ {dupeReview.accuracy}/5 accuracy</span>}
-                        </div>
+                        <span style={{ background: dupe.type === 'clone' ? 'var(--bg-accent)' : 'var(--bg-success)', color: dupe.type === 'clone' ? 'var(--text-accent)' : 'var(--text-success)', padding: '4px 8px', borderRadius: 'var(--radius)', fontSize: '11px', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                          {dupe.type === 'clone' ? 'Clone' : 'Inspired'}
+                        </span>
                       </div>
-                    );
-                  })}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                        <span>💰 ${dupe.price}</span>
+                        {dupe.accuracy && <span>⭐ {dupe.accuracy}/5 accuracy</span>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -354,7 +383,7 @@
       );
     }
 
-    function ComparisonView({ original, dupe, review }) {
+    function ComparisonView({ original, dupe }) {
       const savings = original.price - dupe.price;
       const savingsPercent = Math.round((savings / original.price) * 100);
       return (
@@ -392,10 +421,10 @@
                   <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>Notes</p>
                   <p style={{ margin: '4px 0 0', fontSize: '13px' }}>{dupe.notes}</p>
                 </div>
-                {review && (
+                {dupe.accuracy && (
                   <div>
                     <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>Match Quality</p>
-                    <p style={{ margin: '4px 0 0', fontSize: '13px' }}>⭐ {review.accuracy}/5 · {review.reviews} reviews</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '13px' }}>⭐ {dupe.accuracy}/5</p>
                   </div>
                 )}
               </div>
@@ -462,26 +491,108 @@
       );
     }
 
-    function AdminView({ fragrances }) {
+    function AdminView({ fragrances, onAddFragrance }) {
+      const [formData, setFormData] = useState({
+        name: '',
+        house: '',
+        price: '',
+        notes: '',
+        type: 'original',
+        source: '',
+        accuracy: ''
+      });
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!formData.name || !formData.house || !formData.price) {
+          alert('Please fill in name, house, and price');
+          return;
+        }
+        onAddFragrance({
+          name: formData.name,
+          house: formData.house,
+          price: parseFloat(formData.price),
+          notes: formData.notes,
+          type: formData.type,
+          source: formData.source,
+          accuracy: formData.accuracy ? parseFloat(formData.accuracy) : null,
+          compared_to_id: null
+        });
+        setFormData({ name: '', house: '', price: '', notes: '', type: 'original', source: '', accuracy: '' });
+      };
+
       return (
         <div style={{ maxWidth: '600px' }}>
           <h2 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '18px', fontWeight: 500 }}>Admin Dashboard</h2>
+
           <div style={{ background: 'var(--surface-2)', border: '0.5px solid var(--border)', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem' }}>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>Welcome, admin! Database contains {fragrances.length} fragrances.</p>
-          </div>
-          <div>
-            <h3 style={{ marginBottom: '1rem', fontSize: '16px', fontWeight: 500 }}>Database Overview</h3>
-            <div style={{ display: 'grid', gap: '8px' }}>
-              {fragrances.map(frag => (
-                <div key={frag.id} style={{ background: 'var(--surface-2)', border: '0.5px solid var(--border)', borderRadius: '12px', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px' }}>
-                  <div>
-                    <strong>{frag.name}</strong> · {frag.house} · ${frag.price}
-                  </div>
-                  <span style={{ background: 'var(--bg-secondary)', padding: '4px 8px', borderRadius: 'var(--radius)', fontSize: '12px' }}>
-                    {frag.type}
-                  </span>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '16px', fontWeight: 500 }}>Add New Fragrance</h3>
+
+            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>Fragrance Name *</label>
+                <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '0.5px solid var(--border)', boxSizing: 'border-box', fontSize: '14px' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>House *</label>
+                <input type="text" value={formData.house} onChange={(e) => setFormData({...formData, house: e.target.value})} required style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '0.5px solid var(--border)', boxSizing: 'border-box', fontSize: '14px' }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>Price *</label>
+                  <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} required style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '0.5px solid var(--border)', boxSizing: 'border-box', fontSize: '14px' }} />
                 </div>
-              ))}
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>Type</label>
+                  <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '0.5px solid var(--border)', boxSizing: 'border-box', fontSize: '14px' }}>
+                    <option value="original">Original</option>
+                    <option value="clone">Clone</option>
+                    <option value="inspired">Inspired</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>Notes</label>
+                <input type="text" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="e.g., bergamot, vanilla, musk" style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '0.5px solid var(--border)', boxSizing: 'border-box', fontSize: '14px' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>Accuracy Rating (1-5)</label>
+                <input type="number" step="0.1" min="1" max="5" value={formData.accuracy} onChange={(e) => setFormData({...formData, accuracy: e.target.value})} placeholder="e.g., 4.2" style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '0.5px solid var(--border)', boxSizing: 'border-box', fontSize: '14px' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>Brand URL</label>
+                <input type="url" value={formData.source} onChange={(e) => setFormData({...formData, source: e.target.value})} placeholder="https://..." style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '0.5px solid var(--border)', boxSizing: 'border-box', fontSize: '14px' }} />
+              </div>
+
+              <button type="submit" style={{ padding: '10px 16px', background: 'var(--fill-accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
+                Add Fragrance
+              </button>
+            </form>
+          </div>
+
+          <div>
+            <h3 style={{ marginBottom: '1rem', fontSize: '16px', fontWeight: 500 }}>Database ({fragrances.length} fragrances)</h3>
+            <div style={{ display: 'grid', gap: '8px' }}>
+              {fragrances.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>No fragrances yet. Add your first one!</p>
+              ) : (
+                fragrances.map(frag => (
+                  <div key={frag.id} style={{ background: 'var(--surface-2)', border: '0.5px solid var(--border)', borderRadius: '12px', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px' }}>
+                    <div>
+                      <strong>{frag.name}</strong> · {frag.house} · ${frag.price}
+                    </div>
+                    <span style={{ background: 'var(--bg-secondary)', padding: '4px 8px', borderRadius: 'var(--radius)', fontSize: '12px' }}>
+                      {frag.type}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
