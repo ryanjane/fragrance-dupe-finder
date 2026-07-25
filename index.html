@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Find fragrance dupes, clones, and inspired-by alternatives. Cross-referenced with Fragrantica, Parfumo, and brand sites.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23185FA5' width='180' height='180'/><text x='50%' y='50%' font-size='80' font-weight='bold' text-anchor='middle' dominant-baseline='central' fill='white'>F</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23185FA5' width='180' height='180'/><text x='50%' y='50%' font-size='80' font-weight='bold' text-anchor='middle' dominant-baseline='central' fill='white'>F</text></svg>">
+  
+  <style>
+    :root {
+      --surface-0: #f1efe8;
+      --surface-1: #f9f8f5;
+      --surface-2: #ffffff;
+      --text-primary: #2c2c2a;
+      --text-secondary: #888780;
+      --text-muted: #b4b2a9;
+      --border: rgba(44, 44, 42, 0.08);
+      --border-strong: rgba(44, 44, 42, 0.16);
+      --border-accent: rgba(24, 95, 165, 0.2);
+      --fill-accent: #185FA5;
+      --on-accent: #ffffff;
+      --text-accent: #185FA5;
+      --bg-accent: rgba(24, 95, 165, 0.1);
+      --fill-success: #3b6d11;
+      --on-success: #ffffff;
+      --text-success: #3b6d11;
+      --bg-success: rgba(59, 109, 17, 0.1);
+      --fill-danger: #a32d2d;
+      --on-danger: #ffffff;
+      --text-danger: #a32d2d;
+      --bg-danger: rgba(163, 45, 45, 0.1);
+      --border-danger: rgba(163, 45, 45, 0.2);
+      --text-secondary-bg: #888780;
+      --bg-secondary: rgba(136, 135, 128, 0.1);
+      --radius: 8px;
+      --pad-sm: 0.5rem;
+      --pad-md: 1rem;
+      --pad-lg: 1.5rem;
+      --gap-sm: 0.5rem;
+      --gap-md: 1rem;
+      --gap-lg: 1.5rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --surface-0: #2c2c2a;
+        --surface-1: #444441;
+        --surface-2: #2c2c2a;
+        --text-primary: #f1efe8;
+        --text-secondary: #b4b2a9;
+        --text-muted: #888780;
+        --border: rgba(241, 239, 232, 0.12);
+        --border-strong: rgba(241, 239, 232, 0.2);
+        --border-accent: rgba(181, 212, 244, 0.2);
+        --fill-accent: #4a8de8;
+        --text-accent: #b5d4f4;
+        --bg-accent: rgba(181, 212, 244, 0.15);
+        --fill-success: #97c459;
+        --text-success: #c0dd97;
+        --bg-success: rgba(192, 221, 151, 0.15);
+        --fill-danger: #f09595;
+        --text-danger: #f7c1c1;
+        --bg-danger: rgba(247, 193, 193, 0.15);
+        --border-danger: rgba(247, 193, 193, 0.2);
+        --bg-secondary: rgba(181, 212, 244, 0.1);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: var(--surface-0);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    #root {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    input, select, textarea, button {
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(24, 95, 165, 0.1), 0 0 0 4px rgba(24, 95, 165, 0.05);
+    }
+
+    button {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    a {
+      color: var(--fill-accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+
+  <title>Fragrance Dupe Finder</title>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React & Babel -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+  <!-- App Component -->
+  <script type="text/babel" src="fragrance-dupe-finder.jsx"></script>
+
+  <!-- Mount App -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<FragranceDupeApp />);
+
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
